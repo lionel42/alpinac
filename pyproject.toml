@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "alpinac"
+version = "1.0.0.dev0"
+description = "ALgorithmic Process for Identification of Non-targeted Atmospheric Compounds (identification)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENCE" }
+authors = [
+  { name = "Lionel Constantin", email = "lionel.constantin@empa.ch" },
+  { name = "Myriam Guillevic" },
+  { name = "Aurore Guillevic" },
+  { name = "Katharina Hoveler" },
+  { name = "Shala Blendi"},
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "numpy>=1.24",
+  "scipy>=1.10",
+  "pandas>=2.0",
+  "numba>=0.58",
+]
+
+[project.optional-dependencies]
+jdx = ["jcamp"]
+test = ["pytest"]
+
+[project.scripts]
+alpinac = "alpinac.cli.identify:main"
+alpinac-mass = "alpinac.cli.mass:main"
+alpinac-isotopes = "alpinac.cli.isotopes:main"
+alpinac-knapsack = "alpinac.cli.knapsack:main"
+
+[project.urls]
+Homepage = "https://gitlab.com/empa503/atmospheric-measurements/alpinac/"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/alpinac"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
