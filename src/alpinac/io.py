@@ -144,10 +144,11 @@ def read_jdx(path: str | PathLike) -> tuple[pd.DataFrame, dict]:
 
     :return: the peak table and the metadata (``name``, ``formula``, ``cas``).
     """
-    from jcamp import jcamp_read
+    import jcamp
 
-    with open(path) as f:
-        data = jcamp_read(f)
+    # jcamp >= 1.2.2 renamed jcamp_readfile to readfile
+    readfile = getattr(jcamp, "readfile", None) or jcamp.jcamp_readfile
+    data = readfile(str(path))
     y = np.asarray(data["y"], dtype=float)
     peaks = pd.DataFrame(
         {
