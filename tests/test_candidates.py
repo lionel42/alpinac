@@ -9,7 +9,9 @@ from alpinac.formula import format_formula, parse_formula
 def legacy_solutions(ref) -> list[np.ndarray]:
     """The legacy knapsack solutions of each peak, as count arrays."""
     return [
-        np.array([parse_formula(f) for f in sols], dtype=np.int64).reshape(-1, N_ELEMENTS)
+        np.array([parse_formula(f) for f in sols], dtype=np.int64).reshape(
+            -1, N_ELEMENTS
+        )
         for sols in ref["knapsack"]
     ]
 
@@ -37,7 +39,10 @@ def test_singleton_kept_if_only_candidate_of_its_peak():
 
 
 def test_twins_merged():
-    sols = [np.array([parse_formula("CCl")]), np.array([parse_formula("CCl"), parse_formula("CCl2")])]
+    sols = [
+        np.array([parse_formula("CCl")]),
+        np.array([parse_formula("CCl"), parse_formula("CCl2")]),
+    ]
     c, n_per_peak = CandidateSet.from_knapsack(sols)
     assert len(c) == 2
     assert sorted(c.peaks[c.find(parse_formula("CCl"))]) == [0, 1]
@@ -50,14 +55,18 @@ def test_step2_matches_legacy(reference_file):
         cands, _ = remove_singletons(cands, n_per_peak)
         names = [format_formula(f) for f in cands.formulas]
         new = sorted([n, sorted(p)] for n, p in zip(names, cands.peaks))
-        old = sorted([format_formula(parse_formula(f)), p] for f, p in ref["nodes_step2"])
+        old = sorted(
+            [format_formula(parse_formula(f)), p] for f, p in ref["nodes_step2"]
+        )
         assert new == old
         assert sorted(names[i] for i in cands.maximal()) == sorted(
             format_formula(parse_formula(f)) for f in ref["maximal_step2"]
         )
         # descendants of the legacy graph = sub-formulas among the candidates
         legacy_desc = {
-            format_formula(parse_formula(f)): {format_formula(parse_formula(d)) for d in n["descendants"]}
+            format_formula(parse_formula(f)): {
+                format_formula(parse_formula(d)) for d in n["descendants"]
+            }
             for f, n in ref["nodes"].items()
         }
         for i, name in enumerate(names):

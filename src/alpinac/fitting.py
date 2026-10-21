@@ -31,13 +31,19 @@ def pseudo_voigt(x: np.ndarray, area, mu, sigma, alpha) -> np.ndarray:
     area = np.atleast_1d(area)[:, None]
     mu = np.atleast_1d(mu)[:, None]
     sigma = np.atleast_1d(sigma)[:, None]
-    gauss = area / (sigma * np.sqrt(2 * np.pi)) * np.exp(-((x - mu) ** 2) / (2 * sigma) ** 2)
+    gauss = (
+        area
+        / (sigma * np.sqrt(2 * np.pi))
+        * np.exp(-((x - mu) ** 2) / (2 * sigma) ** 2)
+    )
     sigma_l = sigma * C_PV
     lorentz = area / np.pi * sigma_l / ((x - mu) ** 2 + sigma_l**2)
     return (1 - alpha) * gauss + alpha * lorentz
 
 
-def mass_axis(m_start: float, m_stop: float, points_per_mass: float, offset: float) -> np.ndarray:
+def mass_axis(
+    m_start: float, m_stop: float, points_per_mass: float, offset: float
+) -> np.ndarray:
     """Mass axis of a window, as in the legacy ``do_meas_mass_profile_x``."""
     lo = round(m_start) - offset
     hi = round(m_stop) + offset
@@ -84,7 +90,12 @@ def fit_profiles(
     lo, hi = grid[max(i - 1, 0)], grid[min(i + 1, len(grid) - 1)]
     best_offset, best_cost = grid[i], costs[i]
     if hi > lo:
-        res = minimize_scalar(cost, bounds=(lo, hi), method="bounded", options={"xatol": offset_bound * 1e-4})
+        res = minimize_scalar(
+            cost,
+            bounds=(lo, hi),
+            method="bounded",
+            options={"xatol": offset_bound * 1e-4},
+        )
         if res.fun < best_cost:
             best_offset = float(res.x)
     k, _ = _solve_k(A, measured(best_offset), k_min)

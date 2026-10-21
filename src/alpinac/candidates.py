@@ -59,7 +59,9 @@ class CandidateSet:
         return len(self.peaks)
 
     @classmethod
-    def from_knapsack(cls, solutions: list[np.ndarray]) -> tuple[CandidateSet, np.ndarray]:
+    def from_knapsack(
+        cls, solutions: list[np.ndarray]
+    ) -> tuple[CandidateSet, np.ndarray]:
         """Build the candidates from the knapsack solutions of each peak.
 
         Peaks are processed from the heaviest to the lightest (as the legacy

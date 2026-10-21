@@ -67,5 +67,10 @@ def count_valid_subformulas(formula: np.ndarray, min_mass: float) -> int:
     # Heaviest first for the mass pruning
     idx = idx[np.argsort(-MASS[idx], kind="stable")]
     return int(
-        _count(formula[idx].copy(), MASS[idx].copy(), (VALENCE[idx] - 2).astype(np.int64), float(min_mass))
+        _count(
+            formula[idx].copy(),
+            MASS[idx].copy(),
+            (VALENCE[idx] - 2).astype(np.int64),
+            float(min_mass),
+        )
     )

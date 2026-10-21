@@ -86,7 +86,9 @@ def _enumerate(masses, dbe_coef, n_max, lo, hi):
         cur_dbe[level + 1] = d
         level += 1
         remaining = hi - m
-        counts[level] = min(n_max[level], int(math.floor((remaining + 1e-12) / masses[level]))) + 1
+        counts[level] = (
+            min(n_max[level], int(math.floor((remaining + 1e-12) / masses[level]))) + 1
+        )
     return out[:n_out]
 
 
@@ -110,7 +112,9 @@ class FormulaSpace:
 
         :return: (n, N_ELEMENTS) element counts.
         """
-        sub = _enumerate(self._masses, self._dbe_coef, self._n_max, float(mass_min), float(mass_max))
+        sub = _enumerate(
+            self._masses, self._dbe_coef, self._n_max, float(mass_min), float(mass_max)
+        )
         out = np.zeros((sub.shape[0], N_ELEMENTS), dtype=np.int64)
         out[:, self.elements] = sub
         return out

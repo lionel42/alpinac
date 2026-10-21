@@ -20,7 +20,9 @@ def brute_force(f, min_mass):
     return n
 
 
-@pytest.mark.parametrize("formula", ["CCl4", "C2H3ClF2", "C4N", "C6F14", "SF6", "C7H8", "HCl"])
+@pytest.mark.parametrize(
+    "formula", ["CCl4", "C2H3ClF2", "C4N", "C6F14", "SF6", "C7H8", "HCl"]
+)
 @pytest.mark.parametrize("min_mass", [0.0, 23.0, 50.0])
 def test_count_matches_brute_force(formula, min_mass):
     f = parse_formula(formula)

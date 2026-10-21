@@ -21,7 +21,13 @@ from __future__ import annotations
 import numpy as np
 
 from alpinac.elements import ADDUCT_TO_ELEMENT, N_ELEMENTS, VALENCE
-from alpinac.formula import dbe, format_formula, ion_mass, remove_adduct_elements, senior_rule_ii
+from alpinac.formula import (
+    dbe,
+    format_formula,
+    ion_mass,
+    remove_adduct_elements,
+    senior_rule_ii,
+)
 from alpinac.results import Fragment, IdentificationResult, MolecularIon, PeakAssignment
 
 MONO_VALENT = np.flatnonzero(VALENCE == 1)
@@ -169,7 +175,9 @@ def build_result(state, compound_label) -> IdentificationResult:
                         formula=labels[j],
                         fragment=names[i],
                         exact_mass=float(iso.mass[j]),
-                        mass_error_ppm=float((iso.mass[j] - comp.mass[p]) / comp.mass[p] * 1e6),
+                        mass_error_ppm=float(
+                            (iso.mass[j] - comp.mass[p]) / comp.mass[p] * 1e6
+                        ),
                         assigned_area=float(iso.opt[s, j]),
                     )
                 )
@@ -177,9 +185,15 @@ def build_result(state, compound_label) -> IdentificationResult:
         if p not in explained:
             peaks.append(
                 PeakAssignment(
-                    peak=p, mass=float(comp.mass[p]), area=float(comp.area[p]),
-                    spectrum=comp.spectra[comp.spectrum_id[p]], formula="", fragment="",
-                    exact_mass=float("nan"), mass_error_ppm=float("nan"), assigned_area=0.0,
+                    peak=p,
+                    mass=float(comp.mass[p]),
+                    area=float(comp.area[p]),
+                    spectrum=comp.spectra[comp.spectrum_id[p]],
+                    formula="",
+                    fragment="",
+                    exact_mass=float("nan"),
+                    mass_error_ppm=float("nan"),
+                    assigned_area=0.0,
                 )
             )
     peaks.sort(key=lambda a: (a.peak, -a.assigned_area))

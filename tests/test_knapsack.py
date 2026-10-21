@@ -52,7 +52,9 @@ def test_adduct():
     adduct[INDEX["ad.H"]] = 1
     m = mass(parse_formula("CH5"))
     without = FormulaSpace.from_target(m + 0.01, "CH", None)
-    assert "CH5" not in {format_formula(f) for f in without.enumerate(m - 1e-4, m + 1e-4)}
+    assert "CH5" not in {
+        format_formula(f) for f in without.enumerate(m - 1e-4, m + 1e-4)
+    }
     with_adduct = FormulaSpace.from_target(m + 0.01, "CH", None, adduct)
     found = resolve_adducts(with_adduct.enumerate(m - 1e-4, m + 1e-4))
     assert [format_formula(f) for f in found] == ["CH5"]
@@ -64,8 +66,13 @@ def test_knapsack_contains_legacy_solutions(reference_file):
     compounds = split_compounds(read_peaks(reference_file))
     for ref in legacy_oracle(reference_file):
         c = Compound.from_peaks(compounds[ref["compound"]], config)
-        sols = knapsack(c.mass_min, c.mass_max, np.zeros(c.n_peaks, int),
-                        [np.zeros(N_ELEMENTS, int)], config)
+        sols = knapsack(
+            c.mass_min,
+            c.mass_max,
+            np.zeros(c.n_peaks, int),
+            [np.zeros(N_ELEMENTS, int)],
+            config,
+        )
         for i, (new, old) in enumerate(zip(sols, ref["knapsack"])):
             new = {format_formula(f): f for f in new}
             old = {format_formula(parse_formula(f)) for f in old}

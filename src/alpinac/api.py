@@ -20,13 +20,19 @@ from alpinac.results import IdentificationResult
 logger = logging.getLogger(__name__)
 
 
-def _identify_safe(peaks: pd.DataFrame, config: IdentificationConfig, label) -> IdentificationResult:
+def _identify_safe(
+    peaks: pd.DataFrame, config: IdentificationConfig, label
+) -> IdentificationResult:
     try:
         return identify(peaks, config, compound=label)
     except Exception as e:  # reported in the result, not raised
         logger.debug(traceback.format_exc())
-        return IdentificationResult(compound=label, status="error", message=f"{type(e).__name__}: {e}",
-                                    n_peaks=len(peaks))
+        return IdentificationResult(
+            compound=label,
+            status="error",
+            message=f"{type(e).__name__}: {e}",
+            n_peaks=len(peaks),
+        )
 
 
 def _worker(conn, peaks, config, label):
@@ -69,20 +75,29 @@ def identify_compounds(
                 try:
                     results[k] = recv.recv()
                 except EOFError:
-                    results[k] = IdentificationResult(compound=k, status="error",
-                                                      message="worker died", n_peaks=n)
+                    results[k] = IdentificationResult(
+                        compound=k, status="error", message="worker died", n_peaks=n
+                    )
                 proc.join()
                 del running[k]
             elif not proc.is_alive():
-                results[k] = IdentificationResult(compound=k, status="error",
-                                                  message=f"worker exited ({proc.exitcode})", n_peaks=n)
+                results[k] = IdentificationResult(
+                    compound=k,
+                    status="error",
+                    message=f"worker exited ({proc.exitcode})",
+                    n_peaks=n,
+                )
                 del running[k]
             elif timeout is not None and time.monotonic() - t0 > timeout:
                 proc.terminate()
                 proc.join()
-                results[k] = IdentificationResult(compound=k, status="timeout",
-                                                  message=f"took more than {timeout} s", n_peaks=n,
-                                                  runtime=time.monotonic() - t0)
+                results[k] = IdentificationResult(
+                    compound=k,
+                    status="timeout",
+                    message=f"took more than {timeout} s",
+                    n_peaks=n,
+                    runtime=time.monotonic() - t0,
+                )
                 del running[k]
         if running:
             time.sleep(0.01)

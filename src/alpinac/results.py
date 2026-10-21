@@ -139,9 +139,13 @@ class IdentificationResult:
         head = f"Compound {self.compound} [{self.status}]"
         if not self.ok:
             return f"{head}: {self.message}"
-        lines = [f"{head} rt={self.rt:.1f}s, {self.n_peaks} peaks, {self.signal_percent:.1f}% of signal explained"]
+        lines = [
+            f"{head} rt={self.rt:.1f}s, {self.n_peaks} peaks, {self.signal_percent:.1f}% of signal explained"
+        ]
         for m in self.molecular_ions[:5]:
-            lines.append(f"  {m.rank}. {m.formula:<14} likelihood {m.likelihood:6.2f}  m/z {m.mass:.4f}")
+            lines.append(
+                f"  {m.rank}. {m.formula:<14} likelihood {m.likelihood:6.2f}  m/z {m.mass:.4f}"
+            )
         return "\n".join(lines)
 
 

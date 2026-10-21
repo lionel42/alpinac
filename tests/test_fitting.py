@@ -24,8 +24,12 @@ def test_mass_axis_legacy_points():
 def make_problem(offset=0.0):
     x = np.linspace(99.5, 102.5, 2000)
     sigma, alpha = 0.006, 0.5
-    iso1 = pseudo_voigt(x, np.array([1.0, 0.3]), np.array([100.0, 101.0]), sigma, alpha).sum(0)
-    iso2 = pseudo_voigt(x, np.array([1.0, 0.1]), np.array([100.05, 102.0]), sigma, alpha).sum(0)
+    iso1 = pseudo_voigt(
+        x, np.array([1.0, 0.3]), np.array([100.0, 101.0]), sigma, alpha
+    ).sum(0)
+    iso2 = pseudo_voigt(
+        x, np.array([1.0, 0.1]), np.array([100.05, 102.0]), sigma, alpha
+    ).sum(0)
     true_k = np.array([50.0, 20.0])
     peaks_m = np.array([100.0, 101.0, 100.05, 102.0]) - offset
     peaks_a = np.array([50.0, 15.0, 20.0, 2.0])
@@ -51,7 +55,9 @@ def test_fit_recovers_offset():
 
 def test_k_lower_bound():
     x, profiles, measured, _ = make_problem()
-    k, _ = fit_profiles(x, profiles * np.array([[1.0], [0.0]]) + 0.0, measured, 5.0, None)
+    k, _ = fit_profiles(
+        x, profiles * np.array([[1.0], [0.0]]) + 0.0, measured, 5.0, None
+    )
     assert k.min() >= 5.0
 
 
@@ -63,7 +69,12 @@ def test_same_as_lmfit():
     p.add("k0", value=10.0, min=1e-3)
     p.add("k1", value=10.0, min=1e-3)
     res = lmfit.minimize(
-        lambda p: p["k0"].value * profiles[0] + p["k1"].value * profiles[1] - measured(p["off"].value), p
+        lambda p: p["k0"].value * profiles[0]
+        + p["k1"].value * profiles[1]
+        - measured(p["off"].value),
+        p,
     )
     k, off = fit_profiles(x, profiles, measured, 1e-3, 0.004)
-    np.testing.assert_allclose(k, [res.params["k0"].value, res.params["k1"].value], rtol=1e-3)
+    np.testing.assert_allclose(
+        k, [res.params["k0"].value, res.params["k1"].value], rtol=1e-3
+    )

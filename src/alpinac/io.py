@@ -104,8 +104,18 @@ def normalize_peaks(df: pd.DataFrame) -> pd.DataFrame:
     for col, value in defaults.items():
         if col not in df.columns:
             df[col] = value
-    for col in ("rt", "mass", "mass_u_ppm", "mass_cal_u_ppm", "area", "area_u",
-                "peak_width", "peak_alpha", "lod", "sn"):
+    for col in (
+        "rt",
+        "mass",
+        "mass_u_ppm",
+        "mass_cal_u_ppm",
+        "area",
+        "area_u",
+        "peak_width",
+        "peak_alpha",
+        "lod",
+        "sn",
+    ):
         df[col] = df[col].astype(float)
     df["compound"] = df["compound"].astype(int)
     df["ionisation"] = df["ionisation"].astype(str).str.upper()

@@ -86,7 +86,9 @@ def enumerate_isotopologues(
 
     def rec(level: int, p: float, m: float):
         if level == len(multi):
-            patterns.append({multi[j]: tables[j][0][chosen[j]] for j in range(len(multi))})
+            patterns.append(
+                {multi[j]: tables[j][0][chosen[j]] for j in range(len(multi))}
+            )
             probs.append(p)
             masses.append(m)
             return
@@ -186,13 +188,17 @@ class Isotopologues:
             lod_ratio = compound.lod / float(compound.area[peaks].sum())
         else:
             lod_ratio = 1.0
-        patterns, rel, neutral = enumerate_isotopologues(formula, lod_ratio / pruning_factor)
+        patterns, rel, neutral = enumerate_isotopologues(
+            formula, lod_ratio / pruning_factor
+        )
         keep = rel >= lod_ratio
         patterns = [p for p, k in zip(patterns, keep) if k]
         rel, neutral = rel[keep], neutral[keep]
         if rel.max() > 1.0:
             rel = rel / rel.max()
-        is_abundant = np.array([all(c[1:].sum() == 0 for c in p.values()) for p in patterns])
+        is_abundant = np.array(
+            [all(c[1:].sum() == 0 for c in p.values()) for p in patterns]
+        )
         mass = neutral - ELECTRON_MASS
 
         n_spec = compound.n_spectra

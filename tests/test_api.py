@@ -20,7 +20,10 @@ def test_save(tmp_path):
     assert json.loads((tmp_path / "config.json").read_text())["lod"] == 80.0
     d = tmp_path / "compound_0"
     assert sorted(p.name for p in d.iterdir()) == [
-        "fragments.csv", "molecular_ions.csv", "peaks.csv", "summary.json"
+        "fragments.csv",
+        "molecular_ions.csv",
+        "peaks.csv",
+        "summary.json",
     ]
     assert pd.read_csv(d / "molecular_ions.csv")["formula"].iloc[0] == "CCl3F"
 
@@ -49,7 +52,9 @@ def test_cli_identify(tmp_path, capsys):
     assert (tmp_path / "compound_0" / "peaks.csv").exists()
     assert cli_identify.main([str(CFC11), "-n", "1", "--peaks"]) == 0
     out = capsys.readouterr().out
-    line = next(l for l in out.splitlines() if "C[37Cl] " in l and l.split()[0] == "48.96478")
+    line = next(
+        l for l in out.splitlines() if "C[37Cl] " in l and l.split()[0] == "48.96478"
+    )
     assert line.split()[-2:] == ["+11.8", "96"]
     assert "unidentified" in out
 

@@ -42,7 +42,9 @@ class State:
     candidates are only flagged, like the node ids of the legacy graph).
     """
 
-    def __init__(self, compound: Compound, config: IdentificationConfig, cands: CandidateSet):
+    def __init__(
+        self, compound: Compound, config: IdentificationConfig, cands: CandidateSet
+    ):
         self.compound = compound
         self.config = config
         self.cands = cands
@@ -50,11 +52,19 @@ class State:
         self.alive = np.ones(n, dtype=bool)
         self.min_mass = min(float(compound.neutral_mass.min()), config.min_detect_mass)
         self.isos: list[Isotopologues] = [
-            Isotopologues.build(cands.formulas[i], cands.peaks[i], compound, config.isotope_pruning_factor)
+            Isotopologues.build(
+                cands.formulas[i],
+                cands.peaks[i],
+                compound,
+                config.isotope_pruning_factor,
+            )
             for i in range(n)
         ]
         self.n_sub = np.array(
-            [count_valid_subformulas(cands.formulas[i], self.min_mass) for i in range(n)],
+            [
+                count_valid_subformulas(cands.formulas[i], self.min_mass)
+                for i in range(n)
+            ],
             dtype=np.int64,
         )
         self.validated: list[int] = []
@@ -70,8 +80,14 @@ class State:
         """Add a constructed candidate (molecular ion without measured peak)."""
         i = self.cands.add(formula)
         self.alive = np.append(self.alive, True)
-        self.isos.append(Isotopologues.build(formula, [], self.compound, self.config.isotope_pruning_factor))
-        self.n_sub = np.append(self.n_sub, count_valid_subformulas(formula, self.min_mass))
+        self.isos.append(
+            Isotopologues.build(
+                formula, [], self.compound, self.config.isotope_pruning_factor
+            )
+        )
+        self.n_sub = np.append(
+            self.n_sub, count_valid_subformulas(formula, self.min_mass)
+        )
         self.likelihood = np.append(self.likelihood, 0.0)
         self.signal_percent = np.append(self.signal_percent, 0.0)
         return i
@@ -145,7 +161,12 @@ class State:
         opt: set[int] = set()
         for i in self.validated:
             opt |= self.matched_peaks(i)
-        return sum_signal, 100.0 * sum_signal / self.compound.sum_area, len(opt), len(to_opt)
+        return (
+            sum_signal,
+            100.0 * sum_signal / self.compound.sum_area,
+            len(opt),
+            len(to_opt),
+        )
 
     # --- step 7: fit ------------------------------------------------------
     def optimise(self) -> None:
@@ -154,7 +175,8 @@ class State:
         groups: list[tuple[list[int], int]] = []
         for s in range(comp.n_spectra):
             nodes = [
-                i for i in self.validated
+                i
+                for i in self.validated
                 if any(comp.spectrum_id[p] == s for p in self.cands.peaks[i])
             ]
             nodes.sort(key=lambda i: (self._abundant_mass(i), i))
@@ -167,7 +189,7 @@ class State:
                     j += 1
                     # legacy: the window end is extended without rounding nor offset
                     w_stop = max(w_stop, self.isos[nodes[j]].mass_max)
-                groups.append((nodes[i: j + 1], s))
+                groups.append((nodes[i : j + 1], s))
                 i = j + 1
 
         already = [tuple(g) in self.fitted_groups for g, _ in groups]
@@ -225,7 +247,9 @@ class State:
 
         profiles = np.array(
             [
-                pseudo_voigt(x, iso.rel, iso.mass, comp.sigma(iso.mass), comp.alpha).sum(axis=0)
+                pseudo_voigt(
+                    x, iso.rel, iso.mass, comp.sigma(iso.mass), comp.alpha
+                ).sum(axis=0)
                 for iso in isos
             ]
         )
@@ -256,16 +280,23 @@ def _step5to8(state: State) -> int:
         len(state.validated) < int(state.alive.sum())
         and not_opt_masses
         and n_added < config.max_added_nodes
-        and (pct <= config.max_opt_signal or ratio_not_opt > config.max_ratio_not_opt_masses)
+        and (
+            pct <= config.max_opt_signal
+            or ratio_not_opt > config.max_ratio_not_opt_masses
+        )
     ):
         ranking = state.ranking
         if pct > config.max_opt_signal and not_opt_masses:
             # Enough signal: prefer candidates explaining masses not yet optimised
-            first = [i for i in ranking if not (state.matched_peaks(i) & optimised_masses)]
+            first = [
+                i for i in ranking if not (state.matched_peaks(i) & optimised_masses)
+            ]
             if first:
                 ranking = first + [i for i in ranking if i not in set(first)]
                 state.ranking = ranking
-        node = next((i for i in ranking if state.alive[i] and i not in state.validated), None)
+        node = next(
+            (i for i in ranking if state.alive[i] and i not in state.validated), None
+        )
         if node is None:
             break
         n_iter += 1
@@ -284,7 +315,9 @@ def _step5to8(state: State) -> int:
         ratio_not_opt = (n_to_opt - n_opt) / n_to_opt if n_to_opt > 0 else 0.0
         if n_opt >= n_to_opt:
             not_opt_masses = False
-        logger.debug("iteration %d: %.1f%% signal, %d/%d masses", n_iter, pct, n_opt, n_to_opt)
+        logger.debug(
+            "iteration %d: %.1f%% signal, %d/%d masses", n_iter, pct, n_opt, n_to_opt
+        )
     return n_iter
 
 
@@ -314,7 +347,9 @@ def _step5to8_few_masses(state: State) -> None:
 def _step9(state: State) -> None:
     """Remove the candidates that were never validated, and singletons."""
     _, old_pct, _, _ = state.signal_stats()
-    not_validated = [int(i) for i in np.flatnonzero(state.alive) if int(i) not in state.validated]
+    not_validated = [
+        int(i) for i in np.flatnonzero(state.alive) if int(i) not in state.validated
+    ]
     state.remove(not_validated)
     state.remove_singletons()
     _, pct, _, _ = state.signal_stats()
@@ -342,7 +377,9 @@ def run(compound: Compound, config: IdentificationConfig) -> State:
             spec_group.append(len(group_adducts))
             group_adducts.append(adduct)
     group = np.array(spec_group)[compound.spectrum_id]
-    solutions = knapsack(compound.mass_min, compound.mass_max, group, group_adducts, config)
+    solutions = knapsack(
+        compound.mass_min, compound.mass_max, group, group_adducts, config
+    )
     if sum(len(s) for s in solutions) == 0:
         raise NoSolution(
             "No formula matches the measured masses. Consider adding other "
@@ -395,7 +432,12 @@ def identify(
         state = run(comp, config)
         result = build_result(state, compound)
     except NoSolution as e:
-        result = IdentificationResult(compound=compound, status="no_solution", message=str(e),
-                                      rt=comp.rt, n_peaks=comp.n_peaks)
+        result = IdentificationResult(
+            compound=compound,
+            status="no_solution",
+            message=str(e),
+            rt=comp.rt,
+            n_peaks=comp.n_peaks,
+        )
     result.runtime = time.perf_counter() - t0
     return result

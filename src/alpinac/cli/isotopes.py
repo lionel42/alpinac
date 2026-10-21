@@ -13,8 +13,12 @@ def main(argv: list[str] | None = None) -> int:
         "formula (e.g. CCl4): m/z and intensity relative to the most intense one.",
     )
     parser.add_argument("formula")
-    parser.add_argument("--min", type=float, default=1e-3,
-                        help="Smallest relative intensity shown (default 0.001).")
+    parser.add_argument(
+        "--min",
+        type=float,
+        default=1e-3,
+        help="Smallest relative intensity shown (default 0.001).",
+    )
     args = parser.parse_args(argv)
 
     from alpinac.elements import ELECTRON_MASS, ELEMENTS, INDEX
@@ -39,7 +43,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{'isotopologue':<24}{'m/z (1+)':>14}{'rel. intensity':>16}")
     for i in order:
         if rel[i] >= args.min:
-            print(f"{format_isotopologue(f, patterns[i]):<24}{mass[i] - ELECTRON_MASS:>14.6f}{rel[i]:>16.4f}")
+            print(
+                f"{format_isotopologue(f, patterns[i]):<24}{mass[i] - ELECTRON_MASS:>14.6f}{rel[i]:>16.4f}"
+            )
     return 0
 
 

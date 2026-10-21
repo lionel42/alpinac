@@ -20,7 +20,10 @@ def test_read_file_with_adduct_and_spectrum_columns():
     ei = peaks["ionisation"] == "EI"
     assert (peaks.loc[ei, "adduct"] == "").all()  # "None" means no adduct
     assert set(peaks.loc[~ei, "adduct"]) <= {"H", ""}
-    assert peaks["spectrum"].dtype.kind in "OUT" or peaks["spectrum"].map(type).eq(str).all()
+    assert (
+        peaks["spectrum"].dtype.kind in "OUT"
+        or peaks["spectrum"].map(type).eq(str).all()
+    )
     # compound -1 (unassigned peaks) is skipped
     assert -1 not in split_compounds(peaks)
 
@@ -31,7 +34,9 @@ def test_compound_matches_legacy(reference_file):
         c = Compound.from_peaks(compounds[ref["compound"]])
         np.testing.assert_allclose(c.neutral_mass, ref["meas_mass"], rtol=1e-12)
         np.testing.assert_allclose(c.mass_U, ref["meas_mass_U_combined"], rtol=1e-12)
-        np.testing.assert_allclose(c.mass_tol_isotope, ref["meas_mass_u_peak_width"], rtol=1e-12)
+        np.testing.assert_allclose(
+            c.mass_tol_isotope, ref["meas_mass_u_peak_width"], rtol=1e-12
+        )
         np.testing.assert_allclose(c.area, ref["meas_I"])
         assert c.sigma_slope == pytest.approx(ref["sigma_m_slope"], rel=1e-9)
         assert c.sigma_intercept == pytest.approx(ref["sigma_m_b"], rel=1e-9)
@@ -61,8 +66,14 @@ def test_spectra_and_adducts():
 
 def test_adduct_on_ei_is_rejected():
     peaks = pd.DataFrame(
-        {"mass": [50.1], "area": [1.0], "mass_u_ppm": 5.0, "peak_width": 0.005,
-         "peak_alpha": 0.5, "adduct": ["H"]}
+        {
+            "mass": [50.1],
+            "area": [1.0],
+            "mass_u_ppm": 5.0,
+            "peak_width": 0.005,
+            "peak_alpha": 0.5,
+            "adduct": ["H"],
+        }
     )
     with pytest.raises(ValueError, match="EI"):
         Compound.from_peaks(peaks)
