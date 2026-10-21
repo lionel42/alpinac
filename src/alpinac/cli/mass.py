@@ -17,10 +17,12 @@ def main(argv: list[str] | None = None) -> int:
 
     from alpinac.formula import charge, dbe, format_formula, formula_mass, parse_formula
 
-    print(f"{'formula':<16}{'neutral mass':>16}{'m/z (1+)':>16}{'DBE':>7}")
+    # Without a charge in the formula, the m/z is given for a single charge
+    print(f"{'formula':<16}{'neutral mass':>16}{'charge':>8}{'m/z':>16}{'DBE':>7}")
     status = 0
     for f in args.formulas:
         try:
+            z = max(charge(f), 1)
             neutral = formula_mass(f.split("+")[0])
             ion = formula_mass(f) if charge(f) else formula_mass(f, ionised=True)
             d = dbe(parse_formula(f))
@@ -28,8 +30,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{f}: {e}", file=sys.stderr)
             status = 1
             continue
-        label = f if "[" in f else format_formula(parse_formula(f)) + ("+" * min(charge(f), 1))
-        print(f"{label:<16}{neutral:>16.6f}{ion:>16.6f}{d:>7.1f}")
+        body = f.split("+")[0] if "[" in f else format_formula(parse_formula(f))
+        print(f"{body:<16}{neutral:>16.6f}{f'{z}+':>8}{ion:>16.6f}{d:>7.1f}")
     return status
 
 

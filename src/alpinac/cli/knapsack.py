@@ -16,7 +16,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("mz", type=float, help="Measured m/z.")
     tol = parser.add_mutually_exclusive_group()
-    tol.add_argument("--tol", type=float, help="Tolerance in m/z (default 0.005).")
+    tol.add_argument("--tol", type=float,
+                     help="Tolerance in m/z (default 0.005, or 0.5 if the m/z is an integer).")
     tol.add_argument("--ppm", type=float, help="Tolerance in ppm.")
     add_target_arguments(parser)
     args = parser.parse_args(argv)
@@ -26,7 +27,13 @@ def main(argv: list[str] | None = None) -> int:
     from alpinac.formula import dbe, format_formula, ion_mass
     from alpinac.knapsack import FormulaSpace
 
-    tolerance = args.mz * args.ppm * 1e-6 if args.ppm is not None else (args.tol or 0.005)
+    if args.ppm is not None:
+        tolerance = args.mz * args.ppm * 1e-6
+    elif args.tol is not None:
+        tolerance = args.tol
+    else:
+        # an integer m/z is a nominal (unit) mass
+        tolerance = 0.5 if args.mz.is_integer() else 0.005
     neutral = args.mz + ELECTRON_MASS
     elements = args.target_elements or (None if args.target_formula else DEFAULT_ELEMENTS)
     try:
