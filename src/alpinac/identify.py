@@ -1,6 +1,7 @@
 """The identification of one compound (Guillevic et al. 2021, Fig. 1).
 
-1. knapsack: candidate formulas for each measured mass
+1. knapsack: candidate formulas for each measured mass (singly charged, and
+   doubly charged if supported by a half-integer peak)
 2. candidate set: sub-formula relations, singletons removed
 3. isotopologues of each candidate, matched to the measured peaks
 4. initial contribution of each candidate
@@ -23,7 +24,7 @@ from alpinac.candidates import CandidateSet, remove_singletons
 from alpinac.config import IdentificationConfig
 from alpinac.fitting import fit_profiles, mass_axis, pseudo_voigt
 from alpinac.isotopes import Isotopologues
-from alpinac.knapsack import knapsack
+from alpinac.knapsack import knapsack, knapsack_charged
 from alpinac.peaks import Compound
 from alpinac.results import IdentificationResult
 from alpinac.subformulas import count_valid_subformulas
@@ -57,6 +58,7 @@ class State:
                 cands.peaks[i],
                 compound,
                 config.isotope_pruning_factor,
+                int(cands.charge[i]),
             )
             for i in range(n)
         ]
@@ -77,7 +79,7 @@ class State:
 
     # --- candidates -----------------------------------------------------
     def add_candidate(self, formula: np.ndarray) -> int:
-        """Add a constructed candidate (molecular ion without measured peak)."""
+        """Add a constructed candidate (singly charged molecular ion without measured peak)."""
         i = self.cands.add(formula)
         self.alive = np.append(self.alive, True)
         self.isos.append(
@@ -116,6 +118,18 @@ class State:
         removed = [int(alive[r]) for r in removed]
         self.remove(removed)
         self.n_singletons += len(removed)
+        return removed
+
+    def remove_unsupported_charged(self) -> list[int]:
+        """Remove the alive multiply charged candidates that are a sub-formula of no alive singly charged one."""
+        alive = np.flatnonzero(self.alive)
+        single = self.cands.formulas[alive[self.cands.charge[alive] == 1]]
+        removed = [
+            int(i)
+            for i in alive[self.cands.charge[alive] > 1]
+            if not (single >= self.cands.formulas[i]).all(axis=1).any()
+        ]
+        self.remove(removed)
         return removed
 
     def matched_peaks(self, i: int) -> set[int]:
@@ -345,17 +359,92 @@ def _step5to8_few_masses(state: State) -> None:
 
 
 def _step9(state: State) -> None:
-    """Remove the candidates that were never validated, and singletons."""
+    """Remove the candidates that were never validated, unsupported multiply charged ones, and singletons."""
     _, old_pct, _, _ = state.signal_stats()
     not_validated = [
         int(i) for i in np.flatnonzero(state.alive) if int(i) not in state.validated
     ]
     state.remove(not_validated)
+    state.remove_unsupported_charged()
     state.remove_singletons()
     _, pct, _, _ = state.signal_stats()
     if pct - old_pct < -5.0 or pct < state.config.max_opt_signal:
         state.optimise()
         state.rank()
+
+
+def _charged_solutions(
+    compound: Compound, config: IdentificationConfig
+) -> dict[int, list[np.ndarray]]:
+    """Step 1 for the charges above 1: formulas of each peak, by charge.
+
+    Only EI peaks are used, with ``z * m/z`` up to the heaviest measured mass
+    (a fragment is not heavier than the molecule).
+    """
+    if config.max_charge < 2:
+        return {}
+    ei = np.array([compound.spectrum_ionisation[s] == "EI" for s in compound.spectrum_id])
+    heaviest = float(compound.mass_max.max())
+    return {
+        z: knapsack_charged(
+            compound.mass_min,
+            compound.mass_max,
+            ei & (z * compound.mass_min <= heaviest),
+            z,
+            config,
+        )
+        for z in range(2, config.max_charge + 1)
+    }
+
+
+def _remove_unsupported_charged(
+    cands: CandidateSet,
+    n_per_peak: np.ndarray,
+    compound: Compound,
+    config: IdentificationConfig,
+) -> tuple[CandidateSet, int]:
+    """Remove the multiply charged candidates without support.
+
+    A multiply charged candidate is kept if
+
+    - one of its isotopologues matches a half-integer peak: otherwise
+      ``(2 f)++`` has the same isotopologue masses as ``f+`` and cannot be
+      told apart from it;
+    - its formula is a sub-formula of (or equal to) a singly charged
+      candidate: the molecule also gives singly charged fragments, a doubly
+      charged fragment larger than all of them is not plausible. This is
+      checked again in step 9 against the validated candidates only.
+
+    ``n_per_peak`` is updated in place.
+
+    :return: the new set and the number of removed candidates.
+    """
+    charged = np.flatnonzero(cands.charge > 1)
+    if len(charged) == 0:
+        return cands, 0
+    half = compound.half_integer
+    single = cands.formulas[cands.charge == 1]
+    remove = []
+    for i in charged:
+        if not (single >= cands.formulas[i]).all(axis=1).any():
+            remove.append(int(i))
+            for p in cands.peaks[i]:
+                n_per_peak[p] -= 1
+            continue
+        iso = Isotopologues.build(
+            cands.formulas[i],
+            cands.peaks[i],
+            compound,
+            config.isotope_pruning_factor,
+            int(cands.charge[i]),
+        )
+        matched = iso.peak[iso.peak >= 0]
+        if not half[matched].any():
+            remove.append(int(i))
+            for p in cands.peaks[i]:
+                n_per_peak[p] -= 1
+    keep = np.setdiff1d(np.arange(len(cands)), remove)
+    return cands.subset(keep), len(remove)
 
 
 def run(compound: Compound, config: IdentificationConfig) -> State:
@@ -380,14 +469,23 @@ def run(compound: Compound, config: IdentificationConfig) -> State:
     solutions = knapsack(
         compound.mass_min, compound.mass_max, group, group_adducts, config
     )
-    if sum(len(s) for s in solutions) == 0:
-        raise NoSolution(
-            "No formula matches the measured masses. Consider adding other "
-            "elements or increasing the mass uncertainty."
-        )
+    charged = _charged_solutions(compound, config)
+    no_solution = NoSolution(
+        "No formula matches the measured masses. Consider adding other "
+        "elements or increasing the mass uncertainty."
+    )
+    all_solutions = solutions + [s for sols in charged.values() for s in sols]
+    if sum(len(s) for s in all_solutions) == 0:
+        raise no_solution
 
     # Step 2: candidates, singletons removed
-    cands, n_per_peak = CandidateSet.from_knapsack(solutions)
+    cands, n_per_peak = CandidateSet.from_knapsack(solutions, charged)
+    cands, n_charged_removed = _remove_unsupported_charged(
+        cands, n_per_peak, compound, config
+    )
+    logger.debug("%d unsupported multiply charged candidates removed", n_charged_removed)
+    if len(cands) == 0:
+        raise no_solution
     cands, removed = remove_singletons(cands, n_per_peak)
     logger.debug("%d candidates, %d singletons removed", len(cands), len(removed))
 

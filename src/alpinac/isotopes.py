@@ -119,7 +119,7 @@ class Isotopologues:
     rel: np.ndarray
     """Relative intensity of each isotopologue (max 1)."""
     mass: np.ndarray
-    """m/z of each isotopologue (single positive charge)."""
+    """m/z of each isotopologue (positive charge :attr:`charge`)."""
     is_abundant: np.ndarray
     """True for the isotopologue made of abundant isotopes only."""
     peak: np.ndarray
@@ -128,6 +128,7 @@ class Isotopologues:
     """Measured area of the matched peak (upper bound of the assigned intensity), 0 if none."""
     belongs: np.ndarray
     """(n_spectra,) True if the candidate explains a peak of that spectrum."""
+    charge: int = 1
     k_init: np.ndarray = field(default=None)  # type: ignore[assignment]
     k: np.ndarray = field(default=None)  # type: ignore[assignment]
     """(n_spectra,) scaling factor: fitted intensity = k * rel."""
@@ -177,11 +178,13 @@ class Isotopologues:
         peaks: list[int],
         compound: Compound,
         pruning_factor: float = 1.1,
+        charge: int = 1,
     ) -> Isotopologues:
         """Enumerate and match the isotopologues of a candidate.
 
         :param peaks: the measured peaks the candidate was proposed for
             (empty for constructed molecular ions).
+        :param charge: charge of the ion.
         """
         formula = np.asarray(formula, dtype=np.int64)
         if peaks:
@@ -199,7 +202,7 @@ class Isotopologues:
         is_abundant = np.array(
             [all(c[1:].sum() == 0 for c in p.values()) for p in patterns]
         )
-        mass = neutral - ELECTRON_MASS
+        mass = (neutral - charge * ELECTRON_MASS) / charge
 
         n_spec = compound.n_spectra
         peak = np.full((n_spec, len(rel)), -1, dtype=np.int64)
@@ -232,4 +235,5 @@ class Isotopologues:
             peak=peak,
             meas_max=meas_max,
             belongs=belongs,
+            charge=charge,
         )

@@ -5,6 +5,11 @@ The legacy code organised the candidates in a networkx directed graph
 identification needs from that graph only depends on the order itself:
 ancestors, descendants, maximal candidates and singletons. Here the order is
 stored as a boolean dominance matrix ``below[i, j] = (formula j < formula i)``.
+
+A candidate is a formula *and* a charge (doubly charged fragments, see
+:attr:`alpinac.config.IdentificationConfig.max_charge`). The order is on the
+formulas; for the same formula, the ion of higher charge is below the one of
+lower charge (``C6H6++`` is a sub-fragment of ``C6H6+``).
 """
 
 from __future__ import annotations
@@ -18,8 +23,12 @@ logger = logging.getLogger(__name__)
 
 
 @numba.njit(cache=True)
-def _dominance(formulas):
-    """``out[i, j]`` is True if formula j is a strict sub-formula of formula i."""
+def _dominance(formulas, charges):
+    """``out[i, j]`` is True if candidate j is below candidate i.
+
+    j is below i if formula j is a strict sub-formula of formula i, or if
+    both formulas are equal and j has a higher charge.
+    """
     n, n_el = formulas.shape
     out = np.zeros((n, n), dtype=np.bool_)
     for i in range(n):
@@ -36,7 +45,7 @@ def _dominance(formulas):
                     break
                 if b < a:
                     strict = True
-            out[i, j] = ok and strict
+            out[i, j] = ok and (strict or charges[j] > charges[i])
     return out
 
 
@@ -46,51 +55,72 @@ class CandidateSet:
     :attr formulas: (n, N_ELEMENTS) element counts, abundant isotopes.
     :attr peaks: for each candidate, the indices of the measured peaks for
         which the knapsack proposed it (empty for constructed molecular ions).
-    :attr below: dominance matrix, ``below[i, j]``: j is a strict sub-formula of i.
+    :attr charge: (n,) charge of each candidate ion.
+    :attr below: dominance matrix, ``below[i, j]``: j is below i (see :func:`_dominance`).
     """
 
-    def __init__(self, formulas: np.ndarray, peaks: list[list[int]]):
+    def __init__(
+        self,
+        formulas: np.ndarray,
+        peaks: list[list[int]],
+        charge: np.ndarray | None = None,
+    ):
         self.formulas = np.asarray(formulas, dtype=np.int64).reshape(len(peaks), -1)
         self.peaks = [list(p) for p in peaks]
+        if charge is None:
+            charge = np.ones(len(peaks), dtype=np.int64)
+        self.charge = np.asarray(charge, dtype=np.int64)
+        self.below = self._dominance()
+
+    def _dominance(self) -> np.ndarray:
         used = np.flatnonzero(self.formulas.any(axis=0))
-        self.below = _dominance(np.ascontiguousarray(self.formulas[:, used]))
+        return _dominance(np.ascontiguousarray(self.formulas[:, used]), self.charge)
 
     def __len__(self) -> int:
         return len(self.peaks)
 
     @classmethod
     def from_knapsack(
-        cls, solutions: list[np.ndarray]
+        cls,
+        solutions: list[np.ndarray],
+        charged: dict[int, list[np.ndarray]] | None = None,
     ) -> tuple[CandidateSet, np.ndarray]:
         """Build the candidates from the knapsack solutions of each peak.
 
         Peaks are processed from the heaviest to the lightest (as the legacy
-        graph construction). A formula proposed for several peaks ("twin")
+        graph construction), for each peak the singly charged formulas first.
+        A formula proposed for several peaks with the same charge ("twin")
         is a single candidate with several peaks.
 
+        :param solutions: singly charged formulas of each peak.
+        :param charged: charge -> formulas of each peak, for higher charges.
         :return: the candidate set, and for each peak the number of formulas
             proposed by the knapsack.
         """
-        index: dict[bytes, int] = {}
+        by_charge = {1: solutions, **(charged or {})}
+        index: dict[tuple[bytes, int], int] = {}
         formulas: list[np.ndarray] = []
+        charges: list[int] = []
         peaks: list[list[int]] = []
         n_per_peak = np.zeros(len(solutions), dtype=np.int64)
         for i_peak in range(len(solutions) - 1, -1, -1):
-            sols = solutions[i_peak]
-            n_per_peak[i_peak] = len(sols)
-            for f in sols:
-                key = f.tobytes()
-                if key in index:
-                    peaks[index[key]].append(i_peak)
-                else:
-                    index[key] = len(formulas)
-                    formulas.append(f)
-                    peaks.append([i_peak])
+            for z, sols_z in by_charge.items():
+                sols = sols_z[i_peak]
+                n_per_peak[i_peak] += len(sols)
+                for f in sols:
+                    key = (f.tobytes(), z)
+                    if key in index:
+                        peaks[index[key]].append(i_peak)
+                    else:
+                        index[key] = len(formulas)
+                        formulas.append(f)
+                        charges.append(z)
+                        peaks.append([i_peak])
         if formulas:
             arr = np.array(formulas)
         else:
             arr = np.zeros((0, len(solutions[0]) if solutions else 0), dtype=np.int64)
-        return cls(arr, peaks), n_per_peak
+        return cls(arr, peaks, np.array(charges, dtype=np.int64)), n_per_peak
 
     # --- order relations -------------------------------------------------
     def n_descendants(self) -> np.ndarray:
@@ -114,8 +144,10 @@ class CandidateSet:
         """Candidates comparable to no other candidate."""
         return np.flatnonzero(~self.below.any(axis=0) & ~self.below.any(axis=1))
 
-    def find(self, formula: np.ndarray) -> int | None:
-        hits = np.flatnonzero((self.formulas == formula).all(axis=1))
+    def find(self, formula: np.ndarray, charge: int = 1) -> int | None:
+        hits = np.flatnonzero(
+            (self.formulas == formula).all(axis=1) & (self.charge == charge)
+        )
         return int(hits[0]) if len(hits) else None
 
     # --- modifications ---------------------------------------------------
@@ -125,18 +157,17 @@ class CandidateSet:
         new = CandidateSet.__new__(CandidateSet)
         new.formulas = self.formulas[keep]
         new.peaks = [list(self.peaks[i]) for i in keep]
+        new.charge = self.charge[keep]
         new.below = self.below[np.ix_(keep, keep)]
         return new
 
-    def add(self, formula: np.ndarray) -> int:
+    def add(self, formula: np.ndarray, charge: int = 1) -> int:
         """Add a candidate without measured peak (constructed molecular ion)."""
         formula = np.asarray(formula, dtype=np.int64)
-        f = np.vstack([self.formulas, formula[None, :]])
-        used = np.flatnonzero(f.any(axis=0))
-        row = _dominance(np.ascontiguousarray(f[:, used]))
-        self.formulas = f
+        self.formulas = np.vstack([self.formulas, formula[None, :]])
+        self.charge = np.append(self.charge, charge)
         self.peaks.append([])
-        self.below = row
+        self.below = self._dominance()
         return len(self.peaks) - 1
 
     def hasse_edges(self) -> list[tuple[int, int]]:

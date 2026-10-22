@@ -66,6 +66,16 @@ class IdentificationConfig:
     """A candidate is removed after a fit if its total fitted intensity times
     this factor is below the LOD (legacy rule)."""
 
+    max_charge: int = 2
+    """Maximal charge of the fragment ions (EI spectra only). With 2, doubly
+    charged fragments are also enumerated, for the peaks with ``2 * m/z`` up to
+    the heaviest measured mass. A doubly charged candidate is kept only if one
+    of its isotopologues matches a half-integer peak (see
+    :attr:`alpinac.peaks.Compound.half_integer`), otherwise it cannot be told
+    apart from the singly charged half formula (``C6H6++`` and ``C3H3+`` have
+    the same m/z), and if it is a sub-formula of a singly charged candidate.
+    Molecular ions are always singly charged."""
+
     @property
     def elements(self) -> str | None:
         if self.target_elements is None and self.target_formula is None:

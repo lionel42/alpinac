@@ -14,6 +14,9 @@ This assumes all multi-valent atoms of the molecule were detected in some
 fragment, and that at most one mono-valent atom was lost by the maximal
 fragments (Guillevic et al. 2021). Constructed candidates are added to the
 candidate set (without measured peak) and ranked with the others.
+
+Molecular ions are singly charged: a maximal doubly charged fragment gives the
+singly charged ion of the same formula.
 """
 
 from __future__ import annotations
@@ -85,7 +88,8 @@ def step10(state) -> None:
                 if d == int(d):
                     if senior_rule_ii(cand) and not _contains(mol_frags, cand):
                         mol_frags.append(cand)
-                        mol_nodes.append(node if adduct is None else None)
+                        as_is = adduct is None and state.cands.charge[node] == 1
+                        mol_nodes.append(node if as_is else None)
                 elif not _contains(odd_frags, cand):
                     odd_frags.append(cand)
 
@@ -113,24 +117,34 @@ def step10(state) -> None:
     state.rank()
 
 
+def charge_suffix(charge: int) -> str:
+    """Suffix of the formulas of multiply charged ions (``"++"``), empty for a single charge."""
+    return "+" * charge if charge > 1 else ""
+
+
 def build_result(state, compound_label) -> IdentificationResult:
     """Convert the final state into an :class:`IdentificationResult`."""
     comp = state.compound
     alive = [i for i in state.ranking if state.alive[i]]
     maximal = set(int(i) for i in state.maximal()) if alive else set()
-    names = {i: format_formula(state.cands.formulas[i]) for i in alive}
+    charge = {i: int(state.cands.charge[i]) for i in alive}
+    names = {
+        i: format_formula(state.cands.formulas[i]) + charge_suffix(charge[i])
+        for i in alive
+    }
 
     fragments = [
         Fragment(
             rank=r + 1,
             formula=names[i],
-            mass=ion_mass(state.cands.formulas[i]),
+            mass=ion_mass(state.cands.formulas[i], charge[i]),
             dbe=dbe(state.cands.formulas[i]),
             likelihood=float(state.likelihood[i]),
             signal_percent=float(state.signal_percent[i]),
             intensity=state.isos[i].total,
             is_maximal=i in maximal,
             measured=bool(state.cands.peaks[i]),
+            charge=charge[i],
         )
         for r, i in enumerate(alive)
     ]
@@ -164,7 +178,9 @@ def build_result(state, compound_label) -> IdentificationResult:
         for s in range(comp.n_spectra):
             for j in np.flatnonzero(iso.peak[s] >= 0):
                 p = int(iso.peak[s, j])
-                labels = labels or iso.labels()
+                labels = labels or [
+                    lab + charge_suffix(iso.charge) for lab in iso.labels()
+                ]
                 explained.add(p)
                 peaks.append(
                     PeakAssignment(
@@ -179,6 +195,7 @@ def build_result(state, compound_label) -> IdentificationResult:
                             (iso.mass[j] - comp.mass[p]) / comp.mass[p] * 1e6
                         ),
                         assigned_area=float(iso.opt[s, j]),
+                        charge=iso.charge,
                     )
                 )
     for p in range(comp.n_peaks):
@@ -194,6 +211,7 @@ def build_result(state, compound_label) -> IdentificationResult:
                     exact_mass=float("nan"),
                     mass_error_ppm=float("nan"),
                     assigned_area=0.0,
+                    charge=0,
                 )
             )
     peaks.sort(key=lambda a: (a.peak, -a.assigned_area))
@@ -212,4 +230,4 @@ def build_result(state, compound_label) -> IdentificationResult:
     )
 
 
-__all__ = ["build_result", "step10", "remove_adduct_elements"]
+__all__ = ["build_result", "charge_suffix", "step10", "remove_adduct_elements"]
