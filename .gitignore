@@ -3,3 +3,6 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 /output/
+benchmarks/
+tests/data/legacy/
+tests/data/*.jdx
