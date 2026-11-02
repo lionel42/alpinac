@@ -140,20 +140,31 @@ class State:
     def rank(self) -> list[int]:
         """Order the alive candidates by decreasing likelihood.
 
-        ``likelihood = (100 - |100 - S|) * (found + n_desc) / n_sub`` where S
-        is the percentage of the signal explained by the candidate and its
-        sub-fragments, ``found`` is 1 if it was proposed for a measured peak,
-        ``n_desc`` its number of sub-fragments among the candidates and
-        ``n_sub`` its number of possible (valid) sub-formulas.
+        ``likelihood = (100 - |100 - S|) * n_known / n_sub`` where S is the
+        percentage of the signal explained by the candidate and its
+        sub-fragments, ``n_known`` the number of distinct formulas among its
+        sub-fragments and itself if it was proposed for a measured peak, and
+        ``n_sub`` its number of possible (valid) sub-formulas. Formulas are
+        counted once whatever their charges, as in ``n_sub``.
         """
         alive = np.flatnonzero(self.alive)
         totals = np.array([self.isos[i].total for i in range(len(self.isos))])
         below = self.cands.below[np.ix_(alive, alive)]
         sub_sum = totals[alive] + below.astype(float) @ totals[alive]
         pct = 100.0 * sub_sum / self.compound.sum_area
-        found = np.array([1 if self.cands.peaks[i] else 0 for i in alive])
-        n_desc = below.sum(axis=1)
-        lik = (100.0 - np.abs(100.0 - pct)) * (found + n_desc) / self.n_sub[alive]
+        found = np.array([bool(self.cands.peaks[i]) for i in alive])
+        _, formula_id = np.unique(
+            self.cands.formulas[alive], axis=0, return_inverse=True
+        )
+        formula_id = formula_id.ravel()
+        if len(formula_id) == len(np.unique(formula_id)):
+            # one charge per formula: plain count
+            n_known = found + below.sum(axis=1)
+        else:
+            known = below | np.diag(found)
+            one_hot = np.eye(formula_id.max() + 1)[formula_id]
+            n_known = ((known.astype(float) @ one_hot) > 0).sum(axis=1)
+        lik = (100.0 - np.abs(100.0 - pct)) * n_known / self.n_sub[alive]
         self.likelihood[alive] = lik
         self.signal_percent[alive] = pct
         # Ties: higher index first, as the legacy sort of (likelihood, node id)
@@ -223,7 +234,7 @@ class State:
         removed += self.remove_singletons()
 
         removed_set = set(removed)
-        for gi, (group, s) in enumerate(groups):
+        for gi, (group, _s) in enumerate(groups):
             has_removed = any(i in removed_set for i in group)
             key = tuple(group)
             if has_removed and already[gi]:
@@ -381,9 +392,13 @@ def _charged_solutions(
     Only EI peaks are used, with ``z * m/z`` up to the heaviest measured mass
     (a fragment is not heavier than the molecule).
     """
-    if config.max_charge < 2:
+    # Without half-integer peak, all of them would be removed by
+    # _remove_unsupported_charged
+    if config.max_charge < 2 or not compound.half_integer.any():
         return {}
-    ei = np.array([compound.spectrum_ionisation[s] == "EI" for s in compound.spectrum_id])
+    ei = np.array(
+        [compound.spectrum_ionisation[s] == "EI" for s in compound.spectrum_id]
+    )
     heaviest = float(compound.mass_max.max())
     return {
         z: knapsack_charged(
@@ -483,7 +498,9 @@ def run(compound: Compound, config: IdentificationConfig) -> State:
     cands, n_charged_removed = _remove_unsupported_charged(
         cands, n_per_peak, compound, config
     )
-    logger.debug("%d unsupported multiply charged candidates removed", n_charged_removed)
+    logger.debug(
+        "%d unsupported multiply charged candidates removed", n_charged_removed
+    )
     if len(cands) == 0:
         raise no_solution
     cands, removed = remove_singletons(cands, n_per_peak)
