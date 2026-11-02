@@ -31,6 +31,7 @@ dependencies = [
 [project.optional-dependencies]
 jdx = ["jcamp"]
 test = ["pytest"]
+dev = ["pytest", "ruff"]
 
 [project.scripts]
 alpinac = "alpinac.cli.identify:main"
@@ -46,3 +47,17 @@ packages = ["src/alpinac"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+# E501: long lines left by the formatter (docstrings, strings)
+# B905: zip(strict=) not enforced
+ignore = ["E501", "B905"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["alpinac"]
