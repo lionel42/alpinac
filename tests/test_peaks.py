@@ -81,9 +81,6 @@ def test_adduct_on_ei_is_rejected():
 
 def test_read_jdx():
     pytest.importorskip("jcamp")
-    file = DATA / "110-82-7-Mass.jdx"
-    if not file.exists():
-        pytest.skip("NIST spectrum not versioned")
-    peaks, meta = read_jdx(file)
+    peaks, meta = read_jdx(DATA / "110-82-7-Mass.jdx")
     assert meta["formula"] == "C6H12"
     assert Compound.from_peaks(peaks).unit_mass

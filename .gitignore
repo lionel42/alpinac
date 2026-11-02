@@ -5,4 +5,3 @@ __pycache__/
 /output/
 benchmarks/
 tests/data/legacy/
-tests/data/*.jdx
