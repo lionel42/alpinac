@@ -8,8 +8,8 @@ import math
 
 import pandas as pd
 import pytest
-
 from conftest import DATA, FRAGMENTS
+
 from alpinac import IdentificationConfig, identify, identify_file
 from alpinac.formula import same_formula
 from alpinac.io import read_peaks

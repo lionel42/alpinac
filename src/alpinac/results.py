@@ -29,6 +29,8 @@ class Fragment:
     """No other fragment contains this one."""
     measured: bool
     """The knapsack proposed it for a measured peak (False for constructed molecular ions)."""
+    charge: int = 1
+    """Charge of the ion. Multiply charged ions have the charge in the formula, e.g. ``"C6H6++"``."""
 
 
 @dataclass
@@ -63,13 +65,15 @@ class PeakAssignment:
     area: float
     spectrum: str
     formula: str
-    """Formula of the isotopologue, e.g. ``"CCl2[37Cl]"``, empty if unexplained."""
+    """Formula of the isotopologue, e.g. ``"CCl2[37Cl]"`` or ``"[13C]C5H6++"``, empty if unexplained."""
     fragment: str
     """Formula of the fragment (abundant isotopes) this isotopologue belongs to."""
     exact_mass: float
     mass_error_ppm: float
     assigned_area: float
     """Part of the peak area explained by this isotopologue."""
+    charge: int = 1
+    """Charge of the ion (0 if the peak is unexplained)."""
 
 
 @dataclass

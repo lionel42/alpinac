@@ -89,9 +89,15 @@ The same columns (lower case names: `rt`, `compound`, `lod`, `ionisation`,
 
 Formulas are written in Hill order (C, H, then alphabetical), isotopes as `[37Cl]`.
 
+Doubly charged fragments (EI) are found as well: their formulas end with `++`
+(e.g. `C6H3++`, `C5[13C]H6++`) and `fragments.csv` / `peaks.csv` have a
+`charge` column. They are only proposed when they explain a half-integer peak
+(otherwise `C6H6++` cannot be told apart from `C3H3+`) and are a sub-formula of
+a singly charged fragment. `max_charge=1` switches this off.
+
 ## Differences to the legacy alpinac
 
-The method and its parameters are the same. A list of the bugs fixed and of
+The method and its parameters are the same, plus the doubly charged fragments. A list of the bugs fixed and of
 the (few) behaviour changes is in [PLAN.md](PLAN.md) ("Behaviour changes").
 On the 55 reference compounds of the paper (`tests/data/fragments`), the true
 formula is ranked first for 38 compounds (legacy 36) and the identification

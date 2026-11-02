@@ -2,8 +2,8 @@ from itertools import product
 
 import numpy as np
 import pytest
-
 from conftest import legacy_oracle
+
 from alpinac.elements import VALENCE
 from alpinac.formula import dbe2, mass, parse_formula
 from alpinac.subformulas import count_valid_subformulas

@@ -185,3 +185,33 @@ def knapsack(
         for i in idx:
             solutions[i] = resolve_adducts(space.enumerate(mass_min[i], mass_max[i]))
     return solutions
+
+
+def knapsack_charged(
+    mass_min: np.ndarray,
+    mass_max: np.ndarray,
+    eligible: np.ndarray,
+    charge: int,
+    config: IdentificationConfig,
+) -> list[np.ndarray]:
+    """Step 1 for ions of charge ``charge`` (> 1, no adducts).
+
+    An ion of charge z at m/z has the neutral mass ``z * (m/z + m_e)``: the
+    neutral windows of the singly charged case are multiplied by z.
+
+    :param mass_min, mass_max: neutral mass windows of the peaks for a single charge.
+    :param eligible: peaks for which charge z is tried (the others get no formula).
+    :return: for each peak, the (n, N_ELEMENTS) candidate formulas.
+    """
+    n_el = len(MASS)
+    solutions = [np.zeros((0, n_el), dtype=np.int64) for _ in range(len(mass_min))]
+    idx = np.flatnonzero(eligible)
+    if len(idx) == 0:
+        return solutions
+    lo, hi = charge * mass_min[idx], charge * mass_max[idx]
+    space = FormulaSpace.from_target(
+        float(hi.max()), config.elements, config.target_formula
+    )
+    for i, a, b in zip(idx, lo, hi):
+        solutions[i] = space.enumerate(a, b)
+    return solutions

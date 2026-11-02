@@ -1,6 +1,6 @@
 import numpy as np
-
 from conftest import legacy_oracle
+
 from alpinac.candidates import CandidateSet, remove_singletons
 from alpinac.elements import N_ELEMENTS
 from alpinac.formula import format_formula, parse_formula

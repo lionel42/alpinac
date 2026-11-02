@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 import pytest
-
 from conftest import DATA, legacy_oracle
+
 from alpinac.io import read_jdx, read_peaks
 from alpinac.peaks import Compound, split_compounds
 

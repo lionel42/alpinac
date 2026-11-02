@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
-
 from conftest import legacy_oracle
+
 from alpinac.formula import format_formula, parse_formula, parse_tokens
 from alpinac.io import read_peaks
-from alpinac.isotopes import enumerate_isotopologues, Isotopologues
+from alpinac.isotopes import Isotopologues, enumerate_isotopologues
 from alpinac.peaks import Compound, split_compounds
 
 
@@ -41,12 +41,12 @@ def test_matches_legacy(reference_file):
             f = parse_formula(formula)
             iso = Isotopologues.build(f, peaks_of[format_formula(f)], c)
             new = {
-                frozenset(parse_tokens(l).items()): i
-                for i, l in enumerate(iso.labels())
+                frozenset(parse_tokens(lab).items()): i
+                for i, lab in enumerate(iso.labels())
             }
             old = {
-                frozenset(parse_tokens(l).items()): i
-                for i, l in enumerate(node["iso_list"])
+                frozenset(parse_tokens(lab).items()): i
+                for i, lab in enumerate(node["iso_list"])
             }
             assert new.keys() == old.keys()
             for key, i in new.items():

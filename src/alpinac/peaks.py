@@ -78,6 +78,17 @@ class Compound:
     def mass_max(self) -> np.ndarray:
         return self.neutral_mass + self.mass_U
 
+    @property
+    def half_integer(self) -> np.ndarray:
+        """Peaks at a half-integer m/z (fractional part in ``(0.25, 0.75)``).
+
+        Singly charged ions of the masses measured here have a mass defect
+        well below 0.25, such peaks are the signature of doubly charged ions
+        (with an odd nominal mass).
+        """
+        frac = self.mass % 1.0
+        return (frac > 0.25) & (frac < 0.75)
+
     def sigma(self, mass: np.ndarray | float) -> np.ndarray | float:
         return self.sigma_slope * mass + self.sigma_intercept
 
