@@ -69,9 +69,11 @@ def test_same_as_lmfit():
     p.add("k0", value=10.0, min=1e-3)
     p.add("k1", value=10.0, min=1e-3)
     res = lmfit.minimize(
-        lambda p: p["k0"].value * profiles[0]
-        + p["k1"].value * profiles[1]
-        - measured(p["off"].value),
+        lambda p: (
+            p["k0"].value * profiles[0]
+            + p["k1"].value * profiles[1]
+            - measured(p["off"].value)
+        ),
         p,
     )
     k, off = fit_profiles(x, profiles, measured, 1e-3, 0.004)

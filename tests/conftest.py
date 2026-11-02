@@ -23,8 +23,15 @@ def reference_formulas() -> dict[str, str]:
 
 @cache
 def legacy_oracle(path: Path) -> list[dict]:
-    """Intermediate results of the legacy code for a reference file (one dict per compound)."""
-    return json.loads((LEGACY / (path.stem + ".json")).read_text())
+    """Intermediate results of the legacy code for a reference file (one dict per compound).
+
+    The legacy results are not versioned (too large): the tests using them
+    are skipped when they are missing (e.g. in the CI).
+    """
+    file = LEGACY / (path.stem + ".json")
+    if not file.exists():
+        pytest.skip(f"legacy results not available ({file.name})")
+    return json.loads(file.read_text())
 
 
 @pytest.fixture(params=reference_files(), ids=lambda p: p.stem.split(".frag.")[-1])

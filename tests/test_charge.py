@@ -2,8 +2,8 @@
 
 import numpy as np
 import pytest
-
 from conftest import DATA
+
 from alpinac import identify
 from alpinac.candidates import CandidateSet
 from alpinac.config import IdentificationConfig

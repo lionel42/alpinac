@@ -1,8 +1,8 @@
 import json
 
 import pandas as pd
-
 from conftest import DATA, FRAGMENTS
+
 from alpinac import identify_compounds, identify_file
 from alpinac.cli import identify as cli_identify
 from alpinac.cli import isotopes as cli_isotopes
@@ -53,7 +53,9 @@ def test_cli_identify(tmp_path, capsys):
     assert cli_identify.main([str(CFC11), "-n", "1", "--peaks"]) == 0
     out = capsys.readouterr().out
     line = next(
-        l for l in out.splitlines() if "C[37Cl] " in l and l.split()[0] == "48.96478"
+        ln
+        for ln in out.splitlines()
+        if "C[37Cl] " in ln and ln.split()[0] == "48.96478"
     )
     assert line.split()[-2:] == ["+11.8", "96"]
     assert "unidentified" in out

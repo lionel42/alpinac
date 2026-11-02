@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-
 from conftest import legacy_oracle
+
 from alpinac.config import IdentificationConfig
 from alpinac.elements import INDEX, N_ELEMENTS
 from alpinac.formula import dbe2, format_formula, mass, parse_formula
